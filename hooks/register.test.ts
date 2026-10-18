@@ -2,11 +2,16 @@ import { expect, test } from 'claude-code/testing'
 
 import {
   bar,
+  baseName,
+  branchOf,
   buildHead,
   buildMeters,
+  fmtProject,
   fmtReset,
   fmtTokens,
+  findBranch,
   fmtUsd,
+  gitdirOf,
   langOf,
   pie,
   tone,
@@ -122,4 +127,83 @@ test('with a context reading the hint goes away', () => {
     now,
   )
   expect(meters.some(m => m.label === 'wait')).toBe(false)
+})
+
+test('project folder name, with either separator and a trailing one', () => {
+  expect(baseName('D:\\projects\\claude-mods\\claude-usage-bar')).toBe('claude-usage-bar')
+  expect(baseName('/home/me/claude-usage-bar/')).toBe('claude-usage-bar')
+  expect(baseName('D:\\projects\\claude-mods\\')).toBe('claude-mods')
+})
+
+test('branch from .git/HEAD', () => {
+  expect(branchOf('ref: refs/heads/main\n')).toBe('main')
+  expect(branchOf('ref: refs/heads/feature/new-bar\n')).toBe('feature/new-bar')
+  expect(branchOf('e58d53c3a1b2c3d4e5f60718293a4b5c6d7e8f90\n')).toBe('e58d53c')
+  expect(branchOf('')).toBeUndefined()
+  expect(branchOf('garbage')).toBeUndefined()
+})
+
+test('worktree .git file points to its gitdir', () => {
+  expect(gitdirOf('gitdir: C:/repo/.git/worktrees/x\n', 'D:/w')).toBe('C:/repo/.git/worktrees/x')
+  expect(gitdirOf('gitdir: /repo/.git/worktrees/x', 'D:/w')).toBe('/repo/.git/worktrees/x')
+  expect(gitdirOf('gitdir: ../repo/.git/worktrees/x', 'D:/w')).toBe('D:/w/../repo/.git/worktrees/x')
+  expect(gitdirOf('not a gitdir file', 'D:/w')).toBeUndefined()
+})
+
+test('project as shown on the first line', () => {
+  expect(fmtProject({ name: 'claude-usage-bar', branch: 'main' })).toBe('claude-usage-bar (main)')
+  expect(fmtProject({ name: 'notes' })).toBe('notes')
+  const head = buildHead({
+    main: { model: 'claude-fable-5-1', effort: 'high' },
+    agents: {},
+    project: { name: 'claude-usage-bar', branch: 'main' },
+  })
+  expect(head).toEqual({
+    project: 'claude-usage-bar (main)',
+    model: 'fable-5-1 · high',
+    agents: undefined,
+  })
+  expect(buildHead({ main: null, agents: {}, project: null }).project).toBeUndefined()
+})
+
+// an in-memory disk: a path is a file when it is a key, a folder when some key lives under it
+const disk = (files: Record<string, string>) => {
+  const norm = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const keys = Object.keys(files).map(norm)
+  const body = new Map(Object.entries(files).map(([k, v]) => [norm(k), v]))
+
+  return {
+    fs: {
+      stat: async (path: string) => {
+        const p = norm(path)
+        if (body.has(p)) return { kind: 'file' }
+        if (keys.some(k => k.startsWith(`${p}/`))) return { kind: 'dir' }
+        throw new Error(`ENOENT ${path}`)
+      },
+      read: async (path: string) => {
+        const text = body.get(norm(path))
+        if (text === undefined) throw new Error(`ENOENT ${path}`)
+        return text
+      },
+    },
+  }
+}
+
+test('finds the branch: repo root, a subfolder, a worktree, detached HEAD and no repo', async () => {
+  const $ = disk({
+    'D:/p/repo/.git/HEAD': 'ref: refs/heads/dev\n',
+    'D:/p/repo/src/deep/file.txt': 'x',
+    'D:/p/main/.git/worktrees/wt/HEAD': 'ref: refs/heads/feature/wt\n',
+    'D:/p/wt/.git': 'gitdir: D:/p/main/.git/worktrees/wt\n',
+    'D:/p/detached/.git/HEAD': 'e58d53c3a1b2c3d4e5f60718293a4b5c6d7e8f90\n',
+    'D:/p/plain/note.txt': 'x',
+  })
+
+  expect(await findBranch($, 'D:/p/repo')).toBe('dev')
+  expect(await findBranch($, 'D:/p/repo/src/deep')).toBe('dev')
+  expect(await findBranch($, 'D:\\p\\repo\\src\\deep')).toBe('dev')
+  expect(await findBranch($, 'D:/p/repo/')).toBe('dev')
+  expect(await findBranch($, 'D:/p/wt')).toBe('feature/wt')
+  expect(await findBranch($, 'D:/p/detached')).toBe('e58d53c')
+  expect(await findBranch($, 'D:/p/plain')).toBeUndefined()
 })

@@ -3,16 +3,17 @@
 A [Claude Code](https://claude.com/claude-code) mod that draws a two-line usage bar above the prompt:
 
 ```
-fable-5-1 · high  │  ⎇ Explore haiku-5-5 · low
+claude-usage-bar (main)  │  fable-5-1 · high  │  ⎇ Explore haiku-5-5 · low
 ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  week ◕ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
 ```
 
-**Line 1**, in bold and in the theme's own colors:
+**Line 1**:
 
-- the main model and its reasoning effort;
-- every subagent that is running, with its type, model and effort (`⎇ Explore haiku-5-5 · low`; up to two are named, then `+N`).
+- the project folder and its git branch, dimmed (`claude-usage-bar (main)`; a detached HEAD shows the short hash, and a folder outside a git repository shows just its name);
+- the main model and its reasoning effort, in bold;
+- every subagent that is running, with its type, model and effort, in bold (`⎇ Explore haiku-5-5 · low`; up to two are named, then `+N`).
 
-**Line 2** (shown here in English):
+**Line 2**:
 
 - `ctx`: how full the context window is, as a 5-block bar, with tokens used / window size;
 - `5h` and `week`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);

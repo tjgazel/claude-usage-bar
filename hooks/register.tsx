@@ -127,11 +127,35 @@ export type Snapshot = {
   measure: Measure | null
 }
 
-// the first line: the model and the running subagents, each drawn in its own color
-export const buildHead = (s: Pick<Snapshot, 'main' | 'agents'>) => ({
+// the first line: the project, the model and the running subagents, each drawn on its own
+export const buildHead = (s: Pick<Snapshot, 'main' | 'agents'> & { project?: Project | null }) => ({
+  project: s.project === undefined || s.project === null ? undefined : fmtProject(s.project),
   model: s.main === null ? '…' : fmtModel(s.main),
   agents: fmtAgents(s.agents),
 })
+
+export type Project = { name: string; branch?: string }
+
+// the last segment of a path, with either separator
+export const baseName = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
+
+// the branch named by the contents of .git/HEAD; a detached HEAD gives the short hash
+export const branchOf = (head: string): string | undefined => {
+  const text = head.trim()
+  const ref = /^ref:\s*refs\/heads\/(.+)$/.exec(text)
+  if (ref !== null) return ref[1]
+  return /^[0-9a-f]{40}$/i.test(text) ? text.slice(0, 7) : undefined
+}
+
+// where a worktree's `.git` file points (`gitdir: <path>`); a relative path is taken from `dir`
+export const gitdirOf = (content: string, dir: string): string | undefined => {
+  const path = /^gitdir:\s*(.+)$/m.exec(content)?.[1]?.trim()
+  if (path === undefined) return undefined
+  return /^([A-Za-z]:|[\\/])/.test(path) ? path : `${dir}/${path}`
+}
+
+export const fmtProject = ({ name, branch }: Project) =>
+  branch === undefined ? name : `${name} (${branch})`
 
 // whether a `language` setting (`portuguese`, `Português`, `pt-BR`) asks for Portuguese
 export const langOf = (language: unknown): Lang =>
@@ -152,6 +176,51 @@ async function initialMeasure($: EngineInterface): Promise<Measure> {
   return { context, rateLimits, usd: cost?.usd }
 }
 
+const PROJECT_TTL_MS = 2000
+
+type ProjectCache = { at: number; value: Project | null }
+
+// the branch of the repository that holds `root`, looking up to 8 folders above it
+// only what findBranch needs of the engine, so a test can hand it an in-memory disk
+type FsLike = {
+  fs: {
+    stat: (path: string) => Promise<{ kind: string }>
+    read: (path: string) => Promise<string>
+  }
+}
+
+export async function findBranch($: FsLike, root: string): Promise<string | undefined> {
+  let dir = root.replace(/[\\/]+$/, '')
+  for (let level = 0; level < 8; level++) {
+    const git = `${dir}/.git`
+    const stat = await $.fs.stat(git).catch(() => undefined)
+    if (stat?.kind === 'dir') return branchOf(await $.fs.read(`${git}/HEAD`))
+    if (stat?.kind === 'file') {
+      const gitdir = gitdirOf(await $.fs.read(git), dir)
+      return gitdir === undefined ? undefined : branchOf(await $.fs.read(`${gitdir}/HEAD`))
+    }
+    const cut = Math.max(dir.lastIndexOf('/'), dir.lastIndexOf('\\'))
+    if (cut <= 0) return undefined
+    dir = dir.slice(0, cut)
+  }
+  return undefined
+}
+
+// the project folder and its branch, read at most every PROJECT_TTL_MS: a redraw is frequent
+async function readProject($: EngineInterface, cache: ProjectCache): Promise<Project | null> {
+  const now = await $.clock.now()
+  if (now - cache.at < PROJECT_TTL_MS) return cache.value
+  try {
+    const root = await $.session.root()
+    cache.value = { name: baseName(root), branch: await findBranch($, root).catch(() => undefined) }
+  } catch {
+    cache.value = null
+  }
+  cache.at = now
+
+  return cache.value
+}
+
 type Live = Snapshot & { warned: string[] }
 
 async function refresh($: EngineInterface, s: Live) {
@@ -166,6 +235,7 @@ async function refresh($: EngineInterface, s: Live) {
 
 export const register: Register = on => {
   const s: Live = { main: null, totals: EMPTY, agents: {}, measure: null, warned: [] }
+  const projectCache: ProjectCache = { at: -Infinity, value: null }
 
   on('session.start', async ($, e, next) => {
     s.totals = (await $.state.get({ plugin: 'usage-bar', key: 'totals' })).value ?? EMPTY
@@ -240,13 +310,19 @@ export const register: Register = on => {
     const measure = stored ?? (await initialMeasure($))
     const main = seen ?? { model: await $.session.model() }
     const { value: agents = {} } = await $.state.get({ plugin: 'usage-bar', key: 'agents' })
-    const head = buildHead({ main, agents })
+    const head = buildHead({ main, agents, project: await readProject($, projectCache) })
     const meters = buildMeters(totals, measure, await $.clock.now(), await readLang($))
     const { Box, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column" marginTop={1} marginBottom={0}>
         <Text>
+          {head.project === undefined ? null : (
+            <Text dimColor>
+              {head.project}
+              {'  │  '}
+            </Text>
+          )}
           <Text color="claude" bold>
             {head.model}
           </Text>
