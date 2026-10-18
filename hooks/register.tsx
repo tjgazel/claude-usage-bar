@@ -35,11 +35,7 @@ export type Tone = 'success' | 'warning' | 'error'
 export const tone = (percent: number): Tone =>
   percent < 50 ? 'success' : percent <= 75 ? 'warning' : 'error'
 
-// a pie that fills up: ○ ◔ ◑ ◕ ●
-export const pie = (percent: number) =>
-  percent < 12.5 ? '○' : percent < 37.5 ? '◔' : percent < 62.5 ? '◑' : percent < 87.5 ? '◕' : '●'
-
-// a 5-block bar
+// a 5-block bar, used by the context and by both limits
 export const bar = (percent: number) => {
   const filled = Math.max(0, Math.min(5, Math.round(percent / 20)))
   return '▰'.repeat(filled) + '▱'.repeat(5 - filled)
@@ -71,7 +67,7 @@ const limitMeter = (label: string, limit: Limit | undefined, now: number): Meter
     : {
         label,
         color: tone(limit.percentUsed),
-        text: `${label} ${pie(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now)}`,
+        text: `${label} ${bar(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now)}`,
       }
 
 const contextMeter = (context: Measure['context']): Meter =>

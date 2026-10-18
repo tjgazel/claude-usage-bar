@@ -13,7 +13,6 @@ import {
   fmtUsd,
   gitdirOf,
   langOf,
-  pie,
   tone,
 } from './register'
 
@@ -38,9 +37,15 @@ test('color bands: green below 50, yellow 50-75, red above 75', () => {
   expect(tone(75.1)).toBe('error')
 })
 
-test('the pie and the bar fill up with the percentage', () => {
-  expect([0, 25, 50, 75, 100].map(pie)).toEqual(['○', '◔', '◑', '◕', '●'])
-  expect([0, 38, 55, 80, 100].map(bar)).toEqual(['▱▱▱▱▱', '▰▰▱▱▱', '▰▰▰▱▱', '▰▰▰▰▱', '▰▰▰▰▰'])
+test('the bar fills up with the percentage, and is never mistaken for a letter', () => {
+  expect([0, 4, 38, 55, 80, 100].map(bar)).toEqual([
+    '▱▱▱▱▱',
+    '▱▱▱▱▱',
+    '▰▰▱▱▱',
+    '▰▰▰▱▱',
+    '▰▰▰▰▱',
+    '▰▰▰▰▰',
+  ])
 })
 
 test('time until the reset', () => {
@@ -82,8 +87,8 @@ const busy = { input: 45000, cacheRead: 1200000, output: 12400 }
 
 const expected = [
   { label: 'ctx', color: 'success', text: 'ctx ▰▰▱▱▱ 38% 76k/200k' },
-  { label: '5h', color: 'warning', text: '5h ◑ 55% ↻ 2h10' },
-  { label: 'week', color: 'error', text: 'week ◕ 80% ↻ 3d' },
+  { label: '5h', color: 'warning', text: '5h ▰▰▰▱▱ 55% ↻ 2h10' },
+  { label: 'week', color: 'error', text: 'week ▰▰▰▰▱ 80% ↻ 3d' },
   { label: 'usd', text: '$1.50' },
   { label: 'tok', text: '↑45k (cache 1.2M) ↓12.4k' },
 ]

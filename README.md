@@ -4,7 +4,7 @@ A [Claude Code](https://claude.com/claude-code) mod that draws a two-line usage 
 
 ```
 claude-usage-bar (main)  │  fable-5-1 · high  │  ⎇ Explore haiku-5-5 · low
-ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  week ◕ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
+ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ▰▰▰▱▱ 55% ↻ 2h10  │  week ▰▰▰▰▱ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
 ```
 
 **Line 1**:
@@ -15,8 +15,8 @@ ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  week ◕ 80% �
 
 **Line 2**:
 
-- `ctx`: how full the context window is, as a 5-block bar, with tokens used / window size;
-- `5h` and `week`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);
+- `ctx`: how full the context window is, as a 5-block bar (`▰▰▱▱▱`), with tokens used / window size;
+- `5h` and `week`: how much of the 5-hour and the weekly limit is used, as the same 5-block bar, with the time until each one resets (`↻`);
 - `$`: the cost of the session so far, as `/cost` totals it;
 - `↑` / `↓`: input and output tokens of the session, subagents included; `(cache …)` is what the prompt cache served.
 
