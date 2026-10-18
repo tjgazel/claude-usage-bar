@@ -4,7 +4,7 @@ A [Claude Code](https://claude.com/claude-code) mod that draws a two-line usage 
 
 ```
 fable-5-1 · high  │  ⎇ Explore haiku-5-5 · low
-ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  sem ◕ 80% ↻ 3d  │  US$ 1,50  │  ↑45k (cache 1,2M) ↓12,4k
+ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  wk ◕ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
 ```
 
 **Line 1**, in bold and in the theme's own colors:
@@ -12,14 +12,14 @@ ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  sem ◕ 80% ↻
 - the main model and its reasoning effort;
 - every subagent that is running, with its type, model and effort (`⎇ Explore haiku-5-5 · low`; up to two are named, then `+N`).
 
-**Line 2**:
+**Line 2** (shown here in English):
 
 - `ctx`: how full the context window is, as a 5-block bar, with tokens used / window size;
-- `5h` and `sem`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);
-- `US$`: the cost of the session so far, as `/cost` totals it;
+- `5h` and `wk`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);
+- `$`: the cost of the session so far, as `/cost` totals it;
 - `↑` / `↓`: input and output tokens of the session, subagents included; `(cache …)` is what the prompt cache served.
 
-`ctx`, `5h` and `sem` change color with usage, following your theme (`success`, `warning`, `error`):
+`ctx`, `5h` and `wk` change color with usage, following your theme (`success`, `warning`, `error`):
 
 | Used | Color |
 | --- | --- |
@@ -53,9 +53,12 @@ To remove it: `claude plugin uninstall usage-bar`.
 
 - The bar is drawn in the band above the prompt, because that is the only place a mod can use colors. The status line under the prompt is plain text and always carries the mod's name, so it is not used.
 - The band is drawn on the terminal and desktop surfaces. You can collapse it with `ctrl+x ctrl+a`, and it steps aside while a survey is shown.
-- The 5-hour and weekly limits only exist on a subscription. Without one, or before the first response of a session, they show `–`.
-- The labels are in Portuguese: `sem` is the weekly limit (*semana*, week).
+- The 5-hour and weekly limits only exist on a subscription. Without one, or before the first response of a session, they show `–`, with a dim *waiting for the first response* hint at the end of the line.
 - The colors and the 50% / 75% thresholds are in `hooks/register.tsx` (`tone`).
+
+## Language
+
+The bar is in English. When the `language` setting of Claude Code is Portuguese (`portuguese`, `Português`, `pt`, `pt-BR`), the labels and the number formats follow it: `wk` becomes `sem`, `$1.50` becomes `US$ 1,50`, `12.4k` becomes `12,4k`. It reads the setting every time the bar is drawn, so a change shows up on the next redraw. Any other language falls back to English.
 
 ## Develop
 
@@ -65,7 +68,7 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The formatting (token abbreviation, thresholds, reset time) is covered by `hooks/register.test.ts`.
+The formatting (token abbreviation, thresholds, reset time, language) is covered by `hooks/register.test.ts`.
 
 ## License
 
@@ -75,7 +78,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Português
 
-Mod do Claude Code que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima.
+Mod do Claude Code que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima. A barra segue o idioma configurado no Claude Code: com `language` em português, os textos e os números aparecem em português (`sem`, `US$ 1,50`, `12,4k`); nos demais casos, em inglês.
 
 ### Instalação
 

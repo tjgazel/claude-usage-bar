@@ -6,33 +6,58 @@ const EMPTY: Totals = { input: 0, cacheRead: 0, output: 0 }
 const WARN_AT = 90
 const MAX_AGENTS_SHOWN = 2
 
-const decimal = (x: number) =>
-  (x >= 100 ? x.toFixed(0) : x.toFixed(1)).replace(/\.0$/, '').replace('.', ',')
+// English by default; Portuguese when the `language` setting asks for it
+export type Lang = 'en' | 'pt'
 
-export const fmtTokens = (n: number) =>
-  n >= 1e6 ? `${decimal(n / 1e6)}M` : n >= 1e3 ? `${decimal(n / 1e3)}k` : String(n)
+const TEXT = {
+  en: {
+    week: 'wk',
+    now: 'now',
+    waiting: 'waiting for the first response',
+    toast: (kind: string, percent: number) =>
+      `${kind === 'five_hour' ? '5h limit' : 'Weekly limit'}: ${percent}% used`,
+  },
+  pt: {
+    week: 'sem',
+    now: 'agora',
+    waiting: 'aguardando a 1ª resposta',
+    toast: (kind: string, percent: number) =>
+      `${kind === 'five_hour' ? 'Limite de 5h' : 'Limite semanal'}: ${percent}% usado`,
+  },
+} as const
 
-export const fmtUsd = (usd: number) => `US$ ${usd.toFixed(2).replace('.', ',')}`
+const decimal = (x: number, lang: Lang) =>
+  (x >= 100 ? x.toFixed(0) : x.toFixed(1)).replace(/\.0$/, '').replace('.', lang === 'pt' ? ',' : '.')
+
+export const fmtTokens = (n: number, lang: Lang = 'en') =>
+  n >= 1e6
+    ? `${decimal(n / 1e6, lang)}M`
+    : n >= 1e3
+      ? `${decimal(n / 1e3, lang)}k`
+      : String(n)
+
+export const fmtUsd = (usd: number, lang: Lang = 'en') =>
+  lang === 'pt' ? `US$ ${usd.toFixed(2).replace('.', ',')}` : `$${usd.toFixed(2)}`
 
 export type Tone = 'success' | 'warning' | 'error'
 
-// verde abaixo de 50%, amarelo de 50% a 75%, vermelho acima (cores do tema)
+// green below 50%, yellow from 50% to 75%, red above (the theme's own colors)
 export const tone = (percent: number): Tone =>
   percent < 50 ? 'success' : percent <= 75 ? 'warning' : 'error'
 
-// pizza que enche: ○ ◔ ◑ ◕ ●
+// a pie that fills up: ○ ◔ ◑ ◕ ●
 export const pie = (percent: number) =>
   percent < 12.5 ? '○' : percent < 37.5 ? '◔' : percent < 62.5 ? '◑' : percent < 87.5 ? '◕' : '●'
 
-// mini-barra de 5 blocos
+// a 5-block bar
 export const bar = (percent: number) => {
   const filled = Math.max(0, Math.min(5, Math.round(percent / 20)))
   return '▰'.repeat(filled) + '▱'.repeat(5 - filled)
 }
 
-export const fmtReset = (ms: number) => {
+export const fmtReset = (ms: number, lang: Lang = 'en') => {
   const minutes = Math.round(ms / 60000)
-  if (minutes <= 0) return 'agora'
+  if (minutes <= 0) return TEXT[lang].now
   if (minutes < 60) return `${minutes}min`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h${String(minutes % 60).padStart(2, '0')}`
@@ -47,46 +72,56 @@ const fmtModel = ({ model, effort }: ModelLabel) =>
 
 export type Meter = { label: string; text: string; color?: Tone; isDim?: boolean }
 
-const resetTail = (limit: Limit, now: number) =>
-  limit.resetsAt === undefined ? '' : ` ↻ ${fmtReset(Date.parse(limit.resetsAt) - now)}`
+const resetTail = (limit: Limit, now: number, lang: Lang) =>
+  limit.resetsAt === undefined ? '' : ` ↻ ${fmtReset(Date.parse(limit.resetsAt) - now, lang)}`
 
-const limitMeter = (label: string, limit: Limit | undefined, now: number): Meter =>
+const limitMeter = (label: string, limit: Limit | undefined, now: number, lang: Lang): Meter =>
   limit === undefined
     ? { label, text: `${label} –`, isDim: true }
     : {
         label,
         color: tone(limit.percentUsed),
-        text: `${label} ${pie(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now)}`,
+        text: `${label} ${pie(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now, lang)}`,
       }
 
-const contextMeter = (context: Measure['context']): Meter =>
+const contextMeter = (context: Measure['context'], lang: Lang): Meter =>
   context.percent === undefined || context.tokens === undefined
     ? { label: 'ctx', text: 'ctx –', isDim: true }
     : {
         label: 'ctx',
         color: tone(context.percent),
-        text: `ctx ${bar(context.percent)} ${Math.round(context.percent)}% ${fmtTokens(context.tokens)}/${fmtTokens(context.window)}`,
+        text: `ctx ${bar(context.percent)} ${Math.round(context.percent)}% ${fmtTokens(context.tokens, lang)}/${fmtTokens(context.window, lang)}`,
       }
 
-const tokensMeter = (totals: Totals): Meter => {
-  const cache = totals.cacheRead > 0 ? ` (cache ${fmtTokens(totals.cacheRead)})` : ''
+const tokensMeter = (totals: Totals, lang: Lang): Meter => {
+  const cache = totals.cacheRead > 0 ? ` (cache ${fmtTokens(totals.cacheRead, lang)})` : ''
 
-  return { label: 'tok', text: `↑${fmtTokens(totals.input)}${cache} ↓${fmtTokens(totals.output)}` }
+  return {
+    label: 'tok',
+    text: `↑${fmtTokens(totals.input, lang)}${cache} ↓${fmtTokens(totals.output, lang)}`,
+  }
 }
 
-// a faixa colorida acima do prompt: medidores, custo e, por último, os tokens
-export const buildMeters = (totals: Totals, measure: Measure | null, now: number): Meter[] => {
+// the colored second line: meters, cost and, last, the tokens
+export const buildMeters = (
+  totals: Totals,
+  measure: Measure | null,
+  now: number,
+  lang: Lang = 'en',
+): Meter[] => {
   const find = (kind: string) => measure?.rateLimits.find(l => l.kind === kind)
   const isWaiting =
     measure === null || (measure.context.percent === undefined && measure.rateLimits.length === 0)
 
   return [
-    measure === null ? { label: 'ctx', text: 'ctx –', isDim: true } : contextMeter(measure.context),
-    limitMeter('5h', find('five_hour'), now),
-    limitMeter('sem', find('seven_day'), now),
-    ...(measure?.usd === undefined ? [] : [{ label: 'usd', text: fmtUsd(measure.usd) }]),
-    tokensMeter(totals),
-    ...(isWaiting ? [{ label: 'wait', text: 'aguardando a 1ª resposta', isDim: true }] : []),
+    measure === null
+      ? { label: 'ctx', text: 'ctx –', isDim: true }
+      : contextMeter(measure.context, lang),
+    limitMeter('5h', find('five_hour'), now, lang),
+    limitMeter(TEXT[lang].week, find('seven_day'), now, lang),
+    ...(measure?.usd === undefined ? [] : [{ label: 'usd', text: fmtUsd(measure.usd, lang) }]),
+    tokensMeter(totals, lang),
+    ...(isWaiting ? [{ label: 'wait', text: TEXT[lang].waiting, isDim: true }] : []),
   ]
 }
 
@@ -105,13 +140,25 @@ export type Snapshot = {
   measure: Measure | null
 }
 
-// a primeira linha da faixa: o modelo e os subagentes, cada um na sua cor
+// the first line: the model and the running subagents, each drawn in its own color
 export const buildHead = (s: Pick<Snapshot, 'main' | 'agents'>) => ({
   model: s.main === null ? '…' : fmtModel(s.main),
   agents: fmtAgents(s.agents),
 })
 
-// o que o engine já sabe antes do primeiro turno (uma instalação no meio da sessão não passa por session.start)
+// whether a `language` setting (`portuguese`, `Português`, `pt-BR`) asks for Portuguese
+export const langOf = (language: unknown): Lang =>
+  typeof language === 'string' && /^(pt|port)/i.test(language.trim()) ? 'pt' : 'en'
+
+async function readLang($: EngineInterface): Promise<Lang> {
+  try {
+    return langOf((await $.settings.read()).language)
+  } catch {
+    return 'en'
+  }
+}
+
+// what the engine already knows before the first turn (a mod installed mid-session never gets session.start)
 async function initialMeasure($: EngineInterface): Promise<Measure> {
   const { context, rateLimits, cost } = await $.session.usage()
 
@@ -154,7 +201,7 @@ export const register: Register = on => {
       s.main = seen
     } else if (s.agents[e.agentId] === undefined) {
       const info = (await $.agent.list()).find(a => a.id === e.agentId)
-      s.agents = { ...s.agents, [e.agentId]: { type: info?.type ?? 'agente', ...seen } }
+      s.agents = { ...s.agents, [e.agentId]: { type: info?.type ?? 'agent', ...seen } }
     } else {
       s.agents = { ...s.agents, [e.agentId]: { ...s.agents[e.agentId]!, ...seen } }
     }
@@ -187,7 +234,7 @@ export const register: Register = on => {
       const id = `${limit.kind}:${limit.resetsAt ?? ''}`
       if (limit.percentUsed >= WARN_AT && !s.warned.includes(id)) {
         s.warned = [...s.warned, id]
-        $.ui.toast(`Limite de ${limit.kind === 'five_hour' ? '5h' : 'semana'}: ${Math.round(limit.percentUsed)}% usado`)
+        $.ui.toast(TEXT[await readLang($)].toast(limit.kind, Math.round(limit.percentUsed)))
       }
     }
     await refresh($, s)
@@ -207,7 +254,7 @@ export const register: Register = on => {
     const main = seen ?? { model: await $.session.model() }
     const { value: agents = {} } = await $.state.get({ plugin: 'usage-bar', key: 'agents' })
     const head = buildHead({ main, agents })
-    const meters = buildMeters(totals, measure, await $.clock.now())
+    const meters = buildMeters(totals, measure, await $.clock.now(), await readLang($))
     const { Box, Text } = $.ui.resolve(e)
 
     return (
