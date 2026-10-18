@@ -6,38 +6,28 @@ const EMPTY: Totals = { input: 0, cacheRead: 0, output: 0 }
 const WARN_AT = 90
 const MAX_AGENTS_SHOWN = 2
 
-// English by default; Portuguese when the `language` setting asks for it
+// The data on the bar is always English and US-formatted; only the messages follow the `language` setting
 export type Lang = 'en' | 'pt'
 
 const TEXT = {
   en: {
-    week: 'wk',
-    now: 'now',
     waiting: 'waiting for the first response',
     toast: (kind: string, percent: number) =>
       `${kind === 'five_hour' ? '5h limit' : 'Weekly limit'}: ${percent}% used`,
   },
   pt: {
-    week: 'sem',
-    now: 'agora',
     waiting: 'aguardando a 1ª resposta',
     toast: (kind: string, percent: number) =>
       `${kind === 'five_hour' ? 'Limite de 5h' : 'Limite semanal'}: ${percent}% usado`,
   },
 } as const
 
-const decimal = (x: number, lang: Lang) =>
-  (x >= 100 ? x.toFixed(0) : x.toFixed(1)).replace(/\.0$/, '').replace('.', lang === 'pt' ? ',' : '.')
+const decimal = (x: number) => (x >= 100 ? x.toFixed(0) : x.toFixed(1)).replace(/\.0$/, '')
 
-export const fmtTokens = (n: number, lang: Lang = 'en') =>
-  n >= 1e6
-    ? `${decimal(n / 1e6, lang)}M`
-    : n >= 1e3
-      ? `${decimal(n / 1e3, lang)}k`
-      : String(n)
+export const fmtTokens = (n: number) =>
+  n >= 1e6 ? `${decimal(n / 1e6)}M` : n >= 1e3 ? `${decimal(n / 1e3)}k` : String(n)
 
-export const fmtUsd = (usd: number, lang: Lang = 'en') =>
-  lang === 'pt' ? `US$ ${usd.toFixed(2).replace('.', ',')}` : `$${usd.toFixed(2)}`
+export const fmtUsd = (usd: number) => `$${usd.toFixed(2)}`
 
 export type Tone = 'success' | 'warning' | 'error'
 
@@ -55,9 +45,9 @@ export const bar = (percent: number) => {
   return '▰'.repeat(filled) + '▱'.repeat(5 - filled)
 }
 
-export const fmtReset = (ms: number, lang: Lang = 'en') => {
+export const fmtReset = (ms: number) => {
   const minutes = Math.round(ms / 60000)
-  if (minutes <= 0) return TEXT[lang].now
+  if (minutes <= 0) return 'now'
   if (minutes < 60) return `${minutes}min`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h${String(minutes % 60).padStart(2, '0')}`
@@ -72,37 +62,34 @@ const fmtModel = ({ model, effort }: ModelLabel) =>
 
 export type Meter = { label: string; text: string; color?: Tone; isDim?: boolean }
 
-const resetTail = (limit: Limit, now: number, lang: Lang) =>
-  limit.resetsAt === undefined ? '' : ` ↻ ${fmtReset(Date.parse(limit.resetsAt) - now, lang)}`
+const resetTail = (limit: Limit, now: number) =>
+  limit.resetsAt === undefined ? '' : ` ↻ ${fmtReset(Date.parse(limit.resetsAt) - now)}`
 
-const limitMeter = (label: string, limit: Limit | undefined, now: number, lang: Lang): Meter =>
+const limitMeter = (label: string, limit: Limit | undefined, now: number): Meter =>
   limit === undefined
     ? { label, text: `${label} –`, isDim: true }
     : {
         label,
         color: tone(limit.percentUsed),
-        text: `${label} ${pie(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now, lang)}`,
+        text: `${label} ${pie(limit.percentUsed)} ${Math.round(limit.percentUsed)}%${resetTail(limit, now)}`,
       }
 
-const contextMeter = (context: Measure['context'], lang: Lang): Meter =>
+const contextMeter = (context: Measure['context']): Meter =>
   context.percent === undefined || context.tokens === undefined
     ? { label: 'ctx', text: 'ctx –', isDim: true }
     : {
         label: 'ctx',
         color: tone(context.percent),
-        text: `ctx ${bar(context.percent)} ${Math.round(context.percent)}% ${fmtTokens(context.tokens, lang)}/${fmtTokens(context.window, lang)}`,
+        text: `ctx ${bar(context.percent)} ${Math.round(context.percent)}% ${fmtTokens(context.tokens)}/${fmtTokens(context.window)}`,
       }
 
-const tokensMeter = (totals: Totals, lang: Lang): Meter => {
-  const cache = totals.cacheRead > 0 ? ` (cache ${fmtTokens(totals.cacheRead, lang)})` : ''
+const tokensMeter = (totals: Totals): Meter => {
+  const cache = totals.cacheRead > 0 ? ` (cache ${fmtTokens(totals.cacheRead)})` : ''
 
-  return {
-    label: 'tok',
-    text: `↑${fmtTokens(totals.input, lang)}${cache} ↓${fmtTokens(totals.output, lang)}`,
-  }
+  return { label: 'tok', text: `↑${fmtTokens(totals.input)}${cache} ↓${fmtTokens(totals.output)}` }
 }
 
-// the colored second line: meters, cost and, last, the tokens
+// the colored second line: meters, cost and, last, the tokens; `lang` only picks the hint's language
 export const buildMeters = (
   totals: Totals,
   measure: Measure | null,
@@ -116,11 +103,11 @@ export const buildMeters = (
   return [
     measure === null
       ? { label: 'ctx', text: 'ctx –', isDim: true }
-      : contextMeter(measure.context, lang),
-    limitMeter('5h', find('five_hour'), now, lang),
-    limitMeter(TEXT[lang].week, find('seven_day'), now, lang),
-    ...(measure?.usd === undefined ? [] : [{ label: 'usd', text: fmtUsd(measure.usd, lang) }]),
-    tokensMeter(totals, lang),
+      : contextMeter(measure.context),
+    limitMeter('5h', find('five_hour'), now),
+    limitMeter('week', find('seven_day'), now),
+    ...(measure?.usd === undefined ? [] : [{ label: 'usd', text: fmtUsd(measure.usd) }]),
+    tokensMeter(totals),
     ...(isWaiting ? [{ label: 'wait', text: TEXT[lang].waiting, isDim: true }] : []),
   ]
 }

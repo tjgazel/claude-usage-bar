@@ -4,7 +4,7 @@ A [Claude Code](https://claude.com/claude-code) mod that draws a two-line usage 
 
 ```
 fable-5-1 · high  │  ⎇ Explore haiku-5-5 · low
-ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  wk ◕ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
+ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  week ◕ 80% ↻ 3d  │  $1.50  │  ↑45k (cache 1.2M) ↓12.4k
 ```
 
 **Line 1**, in bold and in the theme's own colors:
@@ -15,11 +15,11 @@ ctx ▰▰▱▱▱ 38% 76k/200k  │  5h ◑ 55% ↻ 2h10  │  wk ◕ 80% ↻ 
 **Line 2** (shown here in English):
 
 - `ctx`: how full the context window is, as a 5-block bar, with tokens used / window size;
-- `5h` and `wk`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);
+- `5h` and `week`: how much of the 5-hour and the weekly limit is used, as a pie that fills up (`○ ◔ ◑ ◕ ●`), with the time until each one resets (`↻`);
 - `$`: the cost of the session so far, as `/cost` totals it;
 - `↑` / `↓`: input and output tokens of the session, subagents included; `(cache …)` is what the prompt cache served.
 
-`ctx`, `5h` and `wk` change color with usage, following your theme (`success`, `warning`, `error`):
+`ctx`, `5h` and `week` change color with usage, following your theme (`success`, `warning`, `error`):
 
 | Used | Color |
 | --- | --- |
@@ -58,7 +58,7 @@ To remove it: `claude plugin uninstall usage-bar`.
 
 ## Language
 
-The bar is in English. When the `language` setting of Claude Code is Portuguese (`portuguese`, `Português`, `pt`, `pt-BR`), the labels and the number formats follow it: `wk` becomes `sem`, `$1.50` becomes `US$ 1,50`, `12.4k` becomes `12,4k`. It reads the setting every time the bar is drawn, so a change shows up on the next redraw. Any other language falls back to English.
+The data on the bar is always the same: English labels and US formats (`week`, `$1.50`, `12.4k`), whatever the language. Only the messages follow the `language` setting of Claude Code: when it is Portuguese (`portuguese`, `Português`, `pt`, `pt-BR`), the *waiting for the first response* hint and the 90% limit toast are shown in Portuguese. Any other language falls back to English. The setting is read each time the bar is drawn.
 
 ## Develop
 
@@ -78,7 +78,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Português
 
-Mod do Claude Code que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima. A barra segue o idioma configurado no Claude Code: com `language` em português, os textos e os números aparecem em português (`sem`, `US$ 1,50`, `12,4k`); nos demais casos, em inglês.
+Mod do Claude Code que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima. Os dados da barra ficam sempre em inglês e no formato americano (`week`, `$1.50`, `12.4k`); só as mensagens (o aviso de espera e o aviso dos 90%) seguem o idioma configurado no Claude Code, em português quando `language` é português.
 
 ### Instalação
 

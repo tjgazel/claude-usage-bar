@@ -15,18 +15,15 @@ import {
 const now = Date.parse('2026-10-18T12:00:00Z')
 const idle = { input: 0, cacheRead: 0, output: 0 }
 
-test('abbreviates tokens, with the decimal mark of the language', () => {
+test('abbreviates tokens with a dot, whatever the language', () => {
   expect(fmtTokens(950)).toBe('950')
   expect(fmtTokens(12400)).toBe('12.4k')
   expect(fmtTokens(200000)).toBe('200k')
   expect(fmtTokens(1200000)).toBe('1.2M')
-  expect(fmtTokens(12400, 'pt')).toBe('12,4k')
-  expect(fmtTokens(1200000, 'pt')).toBe('1,2M')
 })
 
-test('formats the cost', () => {
+test('formats the cost in US dollars', () => {
   expect(fmtUsd(1.234)).toBe('$1.23')
-  expect(fmtUsd(1.234, 'pt')).toBe('US$ 1,23')
 })
 
 test('color bands: green below 50, yellow 50-75, red above 75', () => {
@@ -43,7 +40,6 @@ test('the pie and the bar fill up with the percentage', () => {
 
 test('time until the reset', () => {
   expect(fmtReset(-5)).toBe('now')
-  expect(fmtReset(-5, 'pt')).toBe('agora')
   expect(fmtReset(45 * 60000)).toBe('45min')
   expect(fmtReset((2 * 60 + 5) * 60000)).toBe('2h05')
   expect(fmtReset(3 * 24 * 3600000)).toBe('3d')
@@ -79,31 +75,27 @@ const measure = {
 }
 const busy = { input: 45000, cacheRead: 1200000, output: 12400 }
 
-test('colored line in English: meters by band, then cost, then tokens', () => {
-  expect(buildMeters(busy, measure, now)).toEqual([
-    { label: 'ctx', color: 'success', text: 'ctx ▰▰▱▱▱ 38% 76k/200k' },
-    { label: '5h', color: 'warning', text: '5h ◑ 55% ↻ 2h10' },
-    { label: 'wk', color: 'error', text: 'wk ◕ 80% ↻ 3d' },
-    { label: 'usd', text: '$1.50' },
-    { label: 'tok', text: '↑45k (cache 1.2M) ↓12.4k' },
-  ])
+const expected = [
+  { label: 'ctx', color: 'success', text: 'ctx ▰▰▱▱▱ 38% 76k/200k' },
+  { label: '5h', color: 'warning', text: '5h ◑ 55% ↻ 2h10' },
+  { label: 'week', color: 'error', text: 'week ◕ 80% ↻ 3d' },
+  { label: 'usd', text: '$1.50' },
+  { label: 'tok', text: '↑45k (cache 1.2M) ↓12.4k' },
+]
+
+test('colored line: meters by band, then cost, then tokens', () => {
+  expect(buildMeters(busy, measure, now)).toEqual(expected)
 })
 
-test('colored line in Portuguese', () => {
-  expect(buildMeters(busy, measure, now, 'pt')).toEqual([
-    { label: 'ctx', color: 'success', text: 'ctx ▰▰▱▱▱ 38% 76k/200k' },
-    { label: '5h', color: 'warning', text: '5h ◑ 55% ↻ 2h10' },
-    { label: 'sem', color: 'error', text: 'sem ◕ 80% ↻ 3d' },
-    { label: 'usd', text: 'US$ 1,50' },
-    { label: 'tok', text: '↑45k (cache 1,2M) ↓12,4k' },
-  ])
+test('the data does not change with the language', () => {
+  expect(buildMeters(busy, measure, now, 'pt')).toEqual(expected)
 })
 
 test('without a reading: dashes, tokens and the waiting hint', () => {
   expect(buildMeters(idle, null, now)).toEqual([
     { label: 'ctx', text: 'ctx –', isDim: true },
     { label: '5h', text: '5h –', isDim: true },
-    { label: 'wk', text: 'wk –', isDim: true },
+    { label: 'week', text: 'week –', isDim: true },
     { label: 'tok', text: '↑0 ↓0' },
     { label: 'wait', text: 'waiting for the first response', isDim: true },
   ])
