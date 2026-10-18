@@ -1,6 +1,6 @@
 {
   "name": "usage-bar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A two-line usage bar above the Claude Code prompt: model and effort, running subagents, context, 5-hour and weekly limits, cost and tokens.",
   "author": { "name": "tjgazel" },
   "homepage": "https://github.com/tjgazel/claude-usage-bar",
