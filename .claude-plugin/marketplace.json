@@ -1,0 +1,6 @@
+{
+  "name": "tjgazel-mods",
+  "description": "Mods for Claude Code by tjgazel.",
+  "owner": { "name": "tjgazel" },
+  "plugins": [{ "name": "usage-bar", "source": "./" }]
+}
