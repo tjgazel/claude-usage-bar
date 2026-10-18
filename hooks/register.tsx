@@ -77,6 +77,8 @@ const tokensMeter = (totals: Totals): Meter => {
 // a faixa colorida acima do prompt: medidores, custo e, por último, os tokens
 export const buildMeters = (totals: Totals, measure: Measure | null, now: number): Meter[] => {
   const find = (kind: string) => measure?.rateLimits.find(l => l.kind === kind)
+  const isWaiting =
+    measure === null || (measure.context.percent === undefined && measure.rateLimits.length === 0)
 
   return [
     measure === null ? { label: 'ctx', text: 'ctx –', isDim: true } : contextMeter(measure.context),
@@ -84,6 +86,7 @@ export const buildMeters = (totals: Totals, measure: Measure | null, now: number
     limitMeter('sem', find('seven_day'), now),
     ...(measure?.usd === undefined ? [] : [{ label: 'usd', text: fmtUsd(measure.usd) }]),
     tokensMeter(totals),
+    ...(isWaiting ? [{ label: 'wait', text: 'aguardando a 1ª resposta', isDim: true }] : []),
   ]
 }
 
@@ -107,6 +110,13 @@ export const buildHead = (s: Pick<Snapshot, 'main' | 'agents'>) => ({
   model: s.main === null ? '…' : fmtModel(s.main),
   agents: fmtAgents(s.agents),
 })
+
+// o que o engine já sabe antes do primeiro turno (uma instalação no meio da sessão não passa por session.start)
+async function initialMeasure($: EngineInterface): Promise<Measure> {
+  const { context, rateLimits, cost } = await $.session.usage()
+
+  return { context, rateLimits, usd: cost?.usd }
+}
 
 type Live = Snapshot & { warned: string[] }
 
@@ -191,8 +201,10 @@ export const register: Register = on => {
     }
 
     const { value: totals = EMPTY } = await $.state.get({ plugin: 'usage-bar', key: 'totals' })
-    const { value: measure = null } = await $.state.get({ plugin: 'usage-bar', key: 'measure' })
-    const { value: main = null } = await $.state.get({ plugin: 'usage-bar', key: 'main' })
+    const { value: stored = null } = await $.state.get({ plugin: 'usage-bar', key: 'measure' })
+    const { value: seen = null } = await $.state.get({ plugin: 'usage-bar', key: 'main' })
+    const measure = stored ?? (await initialMeasure($))
+    const main = seen ?? { model: await $.session.model() }
     const { value: agents = {} } = await $.state.get({ plugin: 'usage-bar', key: 'agents' })
     const head = buildHead({ main, agents })
     const meters = buildMeters(totals, measure, await $.clock.now())

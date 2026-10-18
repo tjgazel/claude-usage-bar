@@ -76,5 +76,20 @@ test('sem leitura: tokens aparecem, medidores ficam com traço', () => {
     { label: '5h', text: '5h –', isDim: true },
     { label: 'sem', text: 'sem –', isDim: true },
     { label: 'tok', text: '↑0 ↓0' },
+    { label: 'wait', text: 'aguardando a 1ª resposta', isDim: true },
   ])
+})
+
+test('só a janela de contexto conhecida (sem resposta ainda): mostra o aviso', () => {
+  const meters = buildMeters({ input: 0, cacheRead: 0, output: 0 }, { context: { window: 200000 }, rateLimits: [] }, now)
+  expect(meters.at(-1)).toEqual({ label: 'wait', text: 'aguardando a 1ª resposta', isDim: true })
+})
+
+test('com leitura de contexto, o aviso some', () => {
+  const meters = buildMeters(
+    { input: 0, cacheRead: 0, output: 0 },
+    { context: { tokens: 1000, window: 200000, percent: 1 }, rateLimits: [] },
+    now,
+  )
+  expect(meters.some(m => m.label === 'wait')).toBe(false)
 })
