@@ -137,7 +137,7 @@ export const buildHead = (s: Pick<Snapshot, 'main' | 'agents'> & { project?: Pro
 export type Project = { name: string; branch?: string }
 
 // the last segment of a path, with either separator
-export const baseName = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
+export const baseName = (path: string) => path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path
 
 // the branch named by the contents of .git/HEAD; a detached HEAD gives the short hash
 export const branchOf = (head: string): string | undefined => {

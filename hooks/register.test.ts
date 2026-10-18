@@ -168,7 +168,14 @@ test('project as shown on the first line', () => {
 
 // an in-memory disk: a path is a file when it is a key, a folder when some key lives under it
 const disk = (files: Record<string, string>) => {
-  const norm = (path: string) => path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const norm = (path: string) => {
+    const parts: string[] = []
+    for (const part of path.replace(/\\/g, '/').split('/')) {
+      if (part === '..') parts.pop()
+      else if (part !== '.') parts.push(part)
+    }
+    return parts.join('/').replace(/\/+$/, '')
+  }
   const keys = Object.keys(files).map(norm)
   const body = new Map(Object.entries(files).map(([k, v]) => [norm(k), v]))
 
@@ -206,4 +213,29 @@ test('finds the branch: repo root, a subfolder, a worktree, detached HEAD and no
   expect(await findBranch($, 'D:/p/wt')).toBe('feature/wt')
   expect(await findBranch($, 'D:/p/detached')).toBe('e58d53c')
   expect(await findBranch($, 'D:/p/plain')).toBeUndefined()
+})
+
+test('finds the branch with POSIX paths, home folders and the filesystem root', async () => {
+  const $ = disk({
+    '/home/me/work/app/.git/HEAD': 'ref: refs/heads/main\n',
+    '/home/me/work/app/packages/ui/index.ts': 'x',
+    '/home/me/work/wt/.git': 'gitdir: ../app/.git/worktrees/wt\n',
+    '/home/me/work/app/.git/worktrees/wt/HEAD': 'ref: refs/heads/fix/wt\n',
+    '/srv/site/.git/HEAD': 'ref: refs/heads/prod\n',
+    '/.git/HEAD': 'ref: refs/heads/rootrepo\n',
+    '/home/me/empty/readme.md': 'x',
+  })
+
+  expect(await findBranch($, '/home/me/work/app')).toBe('main')
+  expect(await findBranch($, '/home/me/work/app/packages/ui')).toBe('main')
+  expect(await findBranch($, '/home/me/work/wt')).toBe('fix/wt')
+  expect(await findBranch($, '/srv/site')).toBe('prod')
+  expect(await findBranch($, '/home/me/empty')).toBeUndefined()
+  expect(baseName('/home/me/work/app')).toBe('app')
+  expect(baseName('/')).toBe('/')
+})
+
+test('a folder outside any repository gives no branch, however deep', async () => {
+  const $ = disk({ '/a/b/c/d/e/f/g/h/i/j/k.txt': 'x' })
+  expect(await findBranch($, '/a/b/c/d/e/f/g/h/i/j')).toBeUndefined()
 })
