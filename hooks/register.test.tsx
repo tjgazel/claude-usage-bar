@@ -244,3 +244,43 @@ test('a folder outside any repository gives no branch, however deep', async () =
   const $ = disk({ '/a/b/c/d/e/f/g/h/i/j/k.txt': 'x' })
   expect(await findBranch($, '/a/b/c/d/e/f/g/h/i/j')).toBeUndefined()
 })
+
+const BAND = {
+  plugin: 'usage-bar',
+  component: 'AbovePrompt',
+  props: { hasSurvey: false },
+} as const
+
+// nothing sits beneath the plugin: each hook here stands for the engine
+const answerLikeTheEngine = (on: Parameters<Parameters<typeof test>[1]>[1]) => {
+  on('state.get', () => ({ value: { value: undefined } }))
+  on('session.usage', () => ({
+    value: { context: { window: 200000 }, rateLimits: [] },
+  }))
+  on('session.model', () => ({ value: 'claude-fable-5-1' }))
+  on('session.root', () => ({ value: '/work/app' }))
+  on('settings.read', () => ({ value: {} }))
+  on('clock.now', () => ({ value: now }))
+  on('fs.stat', () => {
+    throw new Error('ENOENT')
+  })
+}
+
+test('the bar is drawn on the terminal and only there', async ($, on) => {
+  answerLikeTheEngine(on)
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+
+    return <Text>engine</Text>
+  })
+
+  const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await terminal.find({ type: 'Text', text: /ctx/ })).toBeDefined()
+  await terminal.unmount()
+
+  for (const surface of ['desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    expect(await ui.find({ type: 'Text', text: /ctx/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})

@@ -46,14 +46,14 @@ From a shell instead:
 claude plugin install usage-bar --marketplace tjgazel/claude-usage-bar
 ```
 
-In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `tjgazel/claude-usage-bar`, then **Add plugin**.
+The bar only shows in the terminal; installing the plugin in the desktop app has no visible effect.
 
 To remove it: `claude plugin uninstall usage-bar`.
 
 ## Notes
 
 - The bar is drawn in the band above the prompt, because that is the only place a mod can use colors. The status line under the prompt is plain text and always carries the mod's name, so it is not used.
-- The band is drawn on the terminal and desktop surfaces. You can collapse it with `ctrl+x ctrl+a`, and it steps aside while a survey is shown.
+- The bar is for the terminal (CLI) only: the desktop app, the VS Code extension and the mobile surfaces draw nothing, and the 90% toast is not raised there either. You can collapse it with `ctrl+x ctrl+a`, and it steps aside while a survey is shown.
 - The 5-hour and weekly limits only exist on a subscription. Without one, or before the first response of a session, they show `–`, with a dim *waiting for the first response* hint at the end of the line.
 - The colors and the 50% / 75% thresholds are in `hooks/register.tsx` (`tone`).
 
@@ -79,7 +79,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Português
 
-Mod do Claude Code que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima. Os dados da barra ficam sempre em inglês e no formato americano (`week`, `$1.50`, `12.4k`); só as mensagens (o aviso de espera e o aviso dos 90%) seguem o idioma configurado no Claude Code, em português quando `language` é português.
+Mod do Claude Code (só no CLI, não no desktop) que desenha acima do prompt uma barra de uso em duas linhas: modelo/esforço e subagentes em execução na primeira; contexto, limite de 5h, limite semanal, custo e tokens (entrada, saída e cache) na segunda. Contexto e limites mudam de cor: verde abaixo de 50%, amarelo de 50% a 75% e vermelho acima. Os dados da barra ficam sempre em inglês e no formato americano (`week`, `$1.50`, `12.4k`); só as mensagens (o aviso de espera e o aviso dos 90%) seguem o idioma configurado no Claude Code, em português quando `language` é português.
 
 ### Instalação
 
@@ -97,6 +97,6 @@ Pelo shell:
 claude plugin install usage-bar --marketplace tjgazel/claude-usage-bar
 ```
 
-No app desktop, onde `/plugin` não funciona: clique em **+** ao lado da caixa de prompt, depois em **Plugins**, **Add marketplace** com `tjgazel/claude-usage-bar` e **Add plugin**.
+A barra só aparece no terminal (CLI); instalar o plugin no app desktop não tem efeito visível.
 
 Para remover: `claude plugin uninstall usage-bar`.

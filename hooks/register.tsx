@@ -283,9 +283,11 @@ export const register: Register = on => {
   on('session.measure', async ($, e, next) => {
     s.measure = { context: e.context, rateLimits: e.rateLimits, usd: e.cost?.usd }
 
+    const isTerminal = (await $.session.surfaces()).includes('terminal')
+
     for (const limit of e.rateLimits) {
       const id = `${limit.kind}:${limit.resetsAt ?? ''}`
-      if (limit.percentUsed >= WARN_AT && !s.warned.includes(id)) {
+      if (isTerminal && limit.percentUsed >= WARN_AT && !s.warned.includes(id)) {
         s.warned = [...s.warned, id]
         $.ui.toast(TEXT[await readLang($)].toast(limit.kind, Math.round(limit.percentUsed)))
       }
@@ -296,7 +298,8 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) {
+    // the bar is for the terminal (CLI) only; the desktop app and the other surfaces get nothing
+    if (e.surface !== 'terminal' || e.props.hasSurvey) {
       return next(e)
     }
 
